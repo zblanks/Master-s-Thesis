@@ -1,0 +1,231 @@
+\documentclass[11pt, draft]{report}
+\usepackage[utf8]{inputenc}
+\usepackage[a4paper,margin=1in,headheight=15pt]{geometry}
+
+% MATH
+\usepackage{amsmath}
+\usepackage{amsfonts}
+\usepackage{amssymb}
+\usepackage{amsthm}
+\usepackage{mathtools}
+\usepackage{algorithm}
+\usepackage[noend]{algpseudocode}
+
+% FORMATTING
+\usepackage{fancyhdr}
+\usepackage{hyperref}
+\usepackage{multicol}
+\usepackage{multirow}
+\usepackage[font=small]{caption}
+\usepackage{subcaption}
+\usepackage{graphicx}
+\usepackage{setspace}
+\usepackage{xcolor}
+\hypersetup{
+    colorlinks,
+    linkcolor={red!50!black},
+    citecolor={blue!80!black},
+    urlcolor={blue!60!black}
+}
+\usepackage{float}
+\usepackage{booktabs}
+
+% Multi-File Structure
+\usepackage{subfiles}
+\graphicspath{{images/}{../images/}}
+
+% FONT
+% http://www.tug.dk/FontCatalogue/fbb/
+% add command here
+\usepackage[T1]{fontenc}
+\usepackage{fbb}
+
+% DEFNS
+\theoremstyle{definition}
+\newtheorem{theorem}{Theorem}[section]
+\newtheorem{definition}[theorem]{Definition}
+
+\newcommand{\one}{\mathbf{1}}
+\newcommand{\var}{\mathbf{\text{var}}}
+\newcommand{\E}{\mathbb{E}}
+\newcommand{\defeq}{\overset{\text{def}}{=}}
+\newcommand{\R}{\mathbb{R}}
+\renewcommand{\lim}[1]{\underset{#1}{\text{lim}} \ }
+\renewcommand{\P}{\mathbb{P}}
+\renewcommand{\min}[1]{\underset{#1}{\text{min}} \ }
+\renewcommand{\max}[1]{\underset{#1}{\text{max}} \ }
+
+
+% SETTINGS
+
+% fancyhdr setting (adds header)
+\pagestyle{fancy}
+
+\graphicspath{ {images/} {../images/} }
+
+
+% FOR TITLE/ABSTRACT PAGES
+
+% hack to show copyright if you use a non-default font
+\renewcommand*\copyright{\textcopyright}
+
+\title{Title}
+\author{Zachary D. Blanks}
+\date{June, 2019}
+
+\def\permission{\par\noindent{\centering
+   The author hereby grants to MIT and DRAPER permission to reproduce and to
+   distribute publicly paper and electronic copies of this thesis
+   document in whole or in part in any medium now known or hereafter
+   created.}\par
+}
+
+\def\signature#1#2{\par\noindent#1\dotfill\null\\*
+  {\raggedleft #2\par}
+}
+
+\def\blankpage{
+	\newpage
+	\thispagestyle{plain}
+	\topskip0pt
+	\vspace*{\fill}
+	\begin{center} THIS PAGE INTENTIONALLY LEFT BLANK\end{center}
+	\vspace*{\fill}
+	\newpage
+}
+
+% hack to allow use of \@title, \@author, ... macros
+\makeatletter
+
+%%%%%%%%%%%%%%%%
+
+\begin{document}
+
+%%%%%%%%%%%%
+%  TITLE   %
+%%%%%%%%%%%%
+
+\thispagestyle{plain}
+{
+	\centering%
+	\vfill
+	{\Large\bf\@title}\par%
+	\vspace{0.5cm}
+	by\par%
+	\vspace{0.5cm}
+	{\Large\@author}\par%
+	\vspace{0.5cm}%
+	B.S. Operations Research, United States Air Force Academy\par%
+	\vspace{0.5cm}%
+	Submitted to the Sloan School of Management \\%
+	in partial fulfillment of the requirements for the degree of\par %
+	\vspace{0.5cm}%
+	Master of Science in Operations Research\par%
+	\vspace{0.5cm}%
+	at the\par%
+	\vspace{0.5cm}%
+	MASSACHUSETTS INSTITUTE OF TECHNOLOGY\par
+	\vspace{0.5cm}%
+	\@date\par%
+	\vspace{0.5cm}%
+	\copyright \ \ \@author, 2019.  All rights reserved.\par%
+	\vspace{0.5cm}%
+	\permission\par
+	\vspace{0.5cm}%
+	\vskip 3\baselineskip%
+	\signature{Author}{Sloan School of Management \\ May 18, 2017}%
+	\vspace{0.75cm}%
+	\signature{Certified by}{Dr. Troy M. Lau \\ 
+	The Charles Stark Draper Laboratory \\ 
+	Technical Supervisor}
+	\vspace{0.75cm}%
+	\signature{Certified by}{Prof. Rahul Mazumder \\ 
+	Assistant Professor of Operations Research and Statistics \\ 
+	Thesis Supervisor}%
+	\vspace{0.75cm}%
+	\signature{Accepted by}{Prof. Dimitris Bertsimas \\ 
+	Boeing Professor of Operations Research \\
+	Co-Director, Operations Research Center}%
+	\vfill
+}
+
+%%%%%%%
+
+\blankpage
+
+%%%%%%%%%%%%
+% ABSTRACT %
+%%%%%%%%%%%%
+
+\thispagestyle{plain}
+{
+	\centering%
+	\vfill
+	{\Large\bf \@title}\par%
+	\vspace{0.5cm}
+	by\par%
+	\vspace{0.5cm}
+	{\Large \@author}\par%
+	\vspace{1cm}%
+	Submitted to the Sloan School of Management \\
+	on May 18, 2017 in partial fulfillment of the \\
+	requirements for the degree of \\ 
+	Master of Science in Operations Research\par%
+	\vspace{1cm}
+}
+
+{\noindent{\Large\bf Abstract}}\par
+\vspace{0.5cm}
+{\noindent 
+Abstract abstract abstract.
+}\par
+\vspace{1cm}
+
+{\noindent
+Technical Supervisor: Dr. Troy M. Lau \\
+The Charles Stark Draper Laboratory
+}\par
+\vspace{0.5cm}
+{\noindent
+Thesis Supervisor: Prof. Rahul Mazumder \\
+Assistant Professor of Operations Research and Statistics
+}
+\vfill
+
+%%%%%%%%%
+
+\blankpage
+
+%%%%%%%%%
+
+%%%%%%%%%%%%%%%%%%%%
+% ACKNOWLEDGEMENTS %
+%%%%%%%%%%%%%%%%%%%%
+
+\chapter*{Acknowledgements}
+I want to thank...
+
+
+%%%%%%%%%%%%
+
+\onehalfspacing
+
+\tableofcontents
+
+\listoffigures
+
+\subfile{chapters/introduction}
+\subfile{chapters/chapter2}
+%\input{chapters/chapter3}
+%\input{chapters/chapter4}
+%\input{chapters/chapter5}
+%\input{chapters/conclusion}
+%
+
+\bibliographystyle{abbrv}
+\bibliography{references1}
+
+\appendix
+\subfile{chapters/appendix1}
+
+\end{document}
