@@ -1,0 +1,31 @@
+\documentclass[../thesis.tex]{subfiles}
+
+\begin{document}
+\chapter{Methods}
+As an overview for this chapter I will highlight the major methodological contributions I make in my thesis. They can be broken down into two major categories: how to infer label groups, and how to train a HC. The focus will be on how to infer label groups because that has been my major area of contribution, but we will also discuss primarily how we get around the ''routing problem''
+
+\section{Label Hierarchy Inference}
+In this section, I will introduce the three primary ways we approach the hierarchy inference problem: k-means clustering, a mixed-integer programming formulation, and the community detection approach. I will also describe the generalization of the Bengio spectral clustering algorithm by feeding a warm-start HC versus using a FC.
+
+\subsection{K-Means Clustering}
+In this section, I will first briefly describe the k-means clustering algorithm and then explain how we apply it for the problem of inferring a label hierarchy. I will distinguish it from the work done by \cite{vural2004hierarchical} by stating how we generalize the notion of fixing $k=2$ to treating $k$ as a hyper-parameter. Moreover, we shift the goal from creating a new type of binary classifier to a HC with the intent of improving classification performance.
+
+\subsection{Mixed-Integer Programming Formulation}
+In this section, I will contextualize why we formulated the label hierarchy problem as a MIP, I will then describe the formulation, and then progressively provide linearization techniques to the formulation to demonstrate how we can make the problem scale. After reaching the final formulation, I will then describe how infer bounds on the big-$M$ component of the formulation and potentially provide a proof on how this bound is tighest possible bound without exploiting prior knowledge of the data. Finally, I will describe a LP relaxation technique we employ we use to help further scale the MIP.
+
+\subsection{Community Detection}
+In this section I will recast the hierarchy inference problem as a community detection problem on graphs. Moreover, I will introduce the similarity metrics we employ to calculate the similarity: RBF kernel, $L_2$ distance, Wasserstein distance, and $L_\infty$ distance. Finally I will provide how we are able to convert a distance metric (such as the $L_2$ distance) into a similarity metric so that it is usable within the context of community detection.
+
+\subsection{Spectral Clustering Generalization}
+In this final portion of the hierarchy inference, I will show how we can generalize the spectral clustering framework proposed by Bengio in \cite{bengio2010label} by using a HC as the warm-start.
+
+\section{HC Training}
+In this component of the methods section, I will describe the techniques we use to train a HC, assuming that the label hierarchy has already been inferred.
+
+\subsection{Node-Level Features}
+In this subsection, I will describe how we provide relevant features for each node in the HC. In particular we will describe how we used linear discriminant analysis (LDA) to provide relevant, supervised features to the node.
+
+\subsection{Routing Problem}
+Finally, I will describe how we compute posterior probabilities in a more robust way to avoid the ``routing problem'' that is traditionally seen with HCs. In particular, I will describe how using the LOTP allows us to compute better posterior probabilities versus simply using the arg-max prediction at a particular level. 
+
+\end{document}

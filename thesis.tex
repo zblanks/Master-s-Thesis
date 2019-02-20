@@ -1,4 +1,4 @@
-\documentclass[11pt, draft]{report}
+\documentclass[11pt]{report}
 \usepackage[utf8]{inputenc}
 \usepackage[a4paper,margin=1in,headheight=15pt]{geometry}
 
@@ -54,6 +54,8 @@
 \renewcommand{\P}{\mathbb{P}}
 \renewcommand{\min}[1]{\underset{#1}{\text{min}} \ }
 \renewcommand{\max}[1]{\underset{#1}{\text{max}} \ }
+\DeclareMathOperator*{\argmax}{argmax}
+\DeclareMathOperator*{\argmin}{argmin}
 
 
 % SETTINGS
@@ -216,8 +218,8 @@ I want to thank...
 
 \subfile{chapters/introduction}
 \subfile{chapters/chapter2}
-%\input{chapters/chapter3}
-%\input{chapters/chapter4}
+\subfile{chapters/chapter3}
+\subfile{chapters/chapter4}
 %\input{chapters/chapter5}
 %\input{chapters/conclusion}
 %
