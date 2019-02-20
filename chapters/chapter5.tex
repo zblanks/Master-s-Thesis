@@ -1,0 +1,43 @@
+\documentclass[../thesis.tex]{subfiles}
+
+\begin{document}
+
+\chapter{Functional Map of the World}
+In this chapter, I want to dive very deeply into the work that we did with the FMOW data set. Ultimately this data was the motivating factor behind the research so I want to provide full context for how it was developed and also provide additional experiments that go further then the work that was done for the other benchmark data sets that were provided in Chapter 4.
+
+\section{Overview}
+In this section I will provide a description of the competition that was put on by IARPA, provide motivation for the problem -- namely, why do we care about classifying images from satellites -- and finally a description of the various classes and features that are present in the data.
+
+\section{Problem Motivation}
+In this section I will describe how IARPA built this data set and more importantly why we would care about solving this problem in the first place. In particular I will focus on the case of how the number of small satellites is increasing and how we need systems that can provide a first pass through satellite images so that analysts can focus on what matters -- providing actionable intelligence.
+
+\section{Data Description}
+In this section I will provide a detailed description of the images as well as the meta-data that goes along with the pictures. I will also describe work that we conducted to extend the the meta-features, primarily through getting country-based variables. 
+
+\section{Experiments}
+In this section I will describe the experiments that we conducted with the FMOW data set. In particular, we will cover the base experiments that were performed which were similar to the ones that were conducted in Chapter 4. In addition though we will also have some other experiments which go further into the data. These will be detailed in subsequent sections.
+
+\subsection{Hierarchical Comparison Experiments}
+This section will contain the standard experiment that we have shown quite a bit previously, the comparison of the distributions among the various hierarchical and flat classifiers. We will also display the time comparison again to demonstrate another comparison between the approaches. 
+
+\subsection{Hyper-Parameter Search}
+One thing that has not been done up to this point has been the effect of the hyper-parameters on the various HCs. Specifically for the k-means based HC we vary the number of meta-classes and the for the community detection approach we vary the similarity/distance metric. In both of these cases, it is necessary to show how these parameters affect the performance of the estimators to show that for the k-means one there typically exists a sweet spot for $k$ which results in good performance and that this value is typically not that large.
+
+For the community detection based approach it is important that we compare the various similarity/distance metrics to show how this can have a large effect on the final outcome both in terms of estimator performance as well as the number of meta-classes that are inferred by the algorithm. 
+
+\subsection{Routing Problem Comparison and Feature Inference}
+In Chapter 3 we introduced the fact that we were computing the final classification using the law of total probability versus the traditional arg-max approach. We claimed that this helped us avoid the routing problem because we weren't potentially going down a wrong path which could not be recovered and we weren't generating weird posterior distributions. In the context of the FMOW experiments, we need to show how employing our LOTP approach can give more robust results than the standard arg-max approach albeit at the cost of additional testing time. Therefore we need the following experiments:
+\begin{enumerate}
+    \item Compare the LOTP approach vs the standard arg-max approach in resulting leaf-level performance
+    \item Compare the time to compute the test level predictions (ultimately this was the motivaiton for some of the original HCs and we so we need to demonstrate that there is no such thing as a free lunch)
+\end{enumerate}
+
+For the second component we have been using LDA to help us generate features that are relevant to that level of the HC. We have this because we hypothesized that providing features which help for that particular subset of labels is important to improving the HC performance. To validate this hypothesis, we need to conduct an experiment where we do and do not use LDA in the HC nodes and compare the performance of the classifier. Ultimately we will likely demonstrate that by not providing new features the HC will do a bit worse because we're not helping the classifier specialize to its specific subset of labels.
+
+\section{Why does a HC do better?}
+In all the experiments we have presented thus far we have shown that an HC can yield statistically significant improvements over the standard flat classifier and sometimes over the spectral clustering based approach. A reasonable question might be that why is an HC doing better (i.e., what is causing this improvement in performance). To answer this question, I believe that we need to turn to information theory and compare the entropy of the distributions which are computed by the hierarchical approach versus the flat approach. I have generated this plot before, but namely I want to demonstrate that by using the HC that we are able to compute more stable posterior distributions and that on average we are getting some of the more difficult labels correct more often. Consequently we are able to improve at the leaf-level because we can compute more reasonable probabilistic predictions.
+
+\subsection{Metaclass Discussion}
+In this final section, we have focused quite a bit on how a HC has done better and shown some experiments for our contributions, but we haven't paid much attention to the resulting meta-classes that are inferred by this technique. In this final section, I want to go through and detail how I found the meta-classes that were inferred by the various hierarchical approaches, and display if they seem like reasonable groupings that are made which correspond to our intuition. This will put a nice cap on the experiments and show that our hierarchical approach is a smart way of approaching these sorts of problems and can infer reasonable groupings that would make sense to an analyst.
+
+\end{document}

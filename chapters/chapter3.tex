@@ -28,4 +28,13 @@ In this subsection, I will describe how we provide relevant features for each no
 \subsection{Routing Problem}
 Finally, I will describe how we compute posterior probabilities in a more robust way to avoid the ``routing problem'' that is traditionally seen with HCs. In particular, I will describe how using the LOTP allows us to compute better posterior probabilities versus simply using the arg-max prediction at a particular level. 
 
+\section{Node Level Metrics}
+For this section, I will introduce the metrics that we employ throughout our experiments to evaluate the performance of our classifiers. In particular I will first introduce the leaf-level metrics because they are easiest to understand. Afterwards, I will highlight how we developed the node-level metrics.
+
+\subsection{Leaf-Level Metrics}
+In this section, I will briefly introduce ``Leaf Top 1'' and ``Leaf Top 3.'' These are simple metrics which are commonly employed with other classifiers, so I don't expect that this will be a long discussion.
+
+\subsection{Node-Level Metrics}
+In this part of the methods section, I will introduce the node-level metrics that we created to help us compare HCs. In particular, I will discuss some of the challenges of comparing HCs and how we used the Monte Carlo based technique to attempt to skirt this issue. 
+
 \end{document}

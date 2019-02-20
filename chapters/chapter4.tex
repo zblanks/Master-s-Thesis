@@ -11,6 +11,28 @@ In this section I will describe the CIFAR data, and the experiments that we perf
 \subsection{Data Description}
 In this section I will describe where the CIFAR data comes from, how we generated new features using the NASNet as described in Chapter 2, and provide some sort of image (maybe a deep dream or something) which will help the reader understand what the data looks like.
 
-\subsection{}
+\subsection{Experimental Results}
+In this section I will describe the experimental results we got from the CIFAR data set. In particular we will highlight how employing a HC can lead to statistically significant improvements in estimator performance. As the graph will show, most the estimators are identical, so we cannot really distinguish between the methods, but by showing this data first we can demonstrate that indeed this method does make sense.
+
+\section{Stanford Dogs}
+In this section I will introduce the Stanford Dogs data set, discuss how it was developed, provide a bit context of places it has been employed in the past, and start to distinguish between our methods and other methodologies
+
+\subsection{Data Description}
+In this section, I will provide a description of the data, how it was it was developed, provide a breakdown of the labels that are contained in the data, and display some example images to contextualize how some of these classes are indeed quite similar to each other. 
+
+\subsection{Experimental Results}
+In this section, I will provide the experimental results from the Stanford dogs experiments. I plan to highlight our methods (such as the k-means based approached and community detection) can lead to statistically significant boosts in performance at the leaf level for different types of classifiers. I will also start to introduce some graphs to compare the time to train the classifiers so that we can explore trade-offs of employing certain techniques. For example, the LP-based approach does not seem to be on the efficient frontier when it comes to training time versus accuracy. 
+
+\section{Reddit Data}
+In this section, I will highlight how the Reddit data was developed, how we employed the techniques discussed in Chapter 2 to generate features for the text data. Afterwards I will again display the experimental results and provide some discussion to compare the various methods.
+
+\subsection{Data Description}
+In this section, I will describe Reddit for those who are unfamiliar with the website, detail how the data was created, and finally discuss how we parsed and generated features from the data. To make this real, I can potentially take one sample from the data, show how we got through the text pre-processing steps, and then finally project the data into a new space with features inferred from the spaCy model. One thought I have right now is to take that sample, get the vectors for all the words in the sample, use t-SNE to embed it into two dimensions, and then display that plot which shows how close or far away certain words are from one another. This might also be a good plot to use for our presentation. I like this idea; I'm going to do it because it helps nicely summarize what we are doing. We could also extend this for a few documents and try to show how certain sub-reddits we expect should be close and far away from one another. 
+
+\subsection{Experimental Results}
+This section will be quite similar to the previous ones; we're going to display the experimental results compare the various methods and explore the potential trade-offs the different hierarchical approaches.
+
+\section{Conclusion}
+In this section I will conclude by providing some general remarks that we can see from the three experimental data sets. In particular I will focus on comparing the various hierarchical methods, discussion how we were able to significantly outperform the flat classifier and also compare it to the standard spectral clustering based approach, and finally, discuss the computational trade-offs that exist when employing the various hierarchical methods. 
 
 \end{document}

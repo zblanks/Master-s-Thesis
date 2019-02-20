@@ -1,0 +1,25 @@
+\documentclass[../thesis.tex]{subfiles}
+
+\begin{document}
+
+\chapter{Conclusion}
+In this chapter I will make closing remarks on the work that we have done and also provide areas of future research that are yet to be explored by this thesis.
+
+\section{Summary}
+In this section I will summarize the reason that we tackled this problem, the contributions that we have made in this thesis, and the experiments we performed to validate our hypotheses. In particular I will focus on
+\begin{enumerate}
+    \item We approached this problem because we saw that data with a large number of labels tend to get easily confused and we hypothesized that by grouping them together we could improve the performance of our classifier
+    \item We made contributions in terms of developing new HC algorithms as well as improving how final posterior predictions are made (LOTP vs arg-max)
+    \item We conducted experiments on multiple data sets and demonstrated that our approach can yield statistically significant improvements over a flat classifier and well as the standard spectral approach
+\end{enumerate}
+
+\section{Future Work}
+There are a large number of areas of future work that remain to be explored but a few jump out at me right away
+\begin{enumerate}
+    \item For our MIP approach we only used a LP sampling heuristic to generate feasible solutions. I image that if we employed some sort of local search algorithm that we could get better results than what the LP is currently doing. Moreover there are likely techniques that we can use to simplify the formulation so that it is not so computationally expensive, particularly with the triple index auxiliary variable that we introduce
+    \item It would be nice to understand at a more theoretical level why certain similarity metrics for the community detection approach do well and others do not. The four that we proposed are standard ways of measuring distance/similarity, but there is likely some more theoretical analysis that could be done to determine why something will or will not perform well for a given data set.
+    \item Throughout this entire analysis we focused on the case where we want to \textit{reduce} the number of labels. However, there are definitely instances where the label is too broad and that it should be split up into multiple groupings. This is a much more challenging problem because you're expanding the label space and also it might be difficult to determine what to call these new labels, but we definitely saw this problem, particularly with the ``amusement park'' category.
+    \item Placeholder for more future work thoughts that come up when writing this portion.
+\end{enumerate}
+
+\end{document}
