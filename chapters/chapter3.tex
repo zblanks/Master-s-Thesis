@@ -2,13 +2,33 @@
 
 \begin{document}
 \chapter{Methods}
-As an overview for this chapter I will highlight the major methodological contributions I make in my thesis. They can be broken down into two major categories: how to infer label groups, and how to train a HC. The focus will be on how to infer label groups because that has been my major area of contribution, but we will also discuss primarily how we get around the ''routing problem''
+In this chapter, we will highlight the major methodological contributions that have been made in this thesis. The contributions fall into two major categories: how to infer label groups and how to train and make predictions from an HC. 
 
 \section{Label Hierarchy Inference}
-In this section, I will introduce the three primary ways we approach the hierarchy inference problem: k-means clustering, a mixed-integer programming formulation, and the community detection approach. I will also describe the generalization of the Bengio spectral clustering algorithm by feeding a warm-start HC versus using a FC.
+In our research when working with HCs, we have focused on the case where the label hierarchy is unknown potentially because there are too many labels for this partition to be created by hand or asking an expert for a label grouping would yield conflicting answers. Consequently, to employ an HC, the label grouping must be inferred from the data. The standard way to do this, as mentioned in Chapter 2, is to first trained a FC and then use spectral clustering on a validation matrix to infer the label groups. This approach has the advantage of tying the label hierarchy to classifier performance -- ultimately the most important metric -- however, this formulation requires that we first train a flat classifier, which somewhat defeats the point of pursuing this hierarchical approach and second to perform spectral clustering the user must provide the number of meta-classes a-priori. We address the first primary problem with spectral clustering with our two methods by employing k-means clustering and a mixed-integer programming formulation, and we tackle both of the problems when we propose a community detection based approach.
 
 \subsection{K-Means Clustering}
-In this section, I will first briefly describe the k-means clustering algorithm and then explain how we apply it for the problem of inferring a label hierarchy. I will distinguish it from the work done by \cite{vural2004hierarchical} by stating how we generalize the notion of fixing $k=2$ to treating $k$ as a hyper-parameter. Moreover, we shift the goal from creating a new type of binary classifier to a HC with the intent of improving classification performance.
+One of the major tasks of unsupervised machine learning is to find patterns in a data matrix, $\mathbf{X}$, by finding ``clusters'' or groups of similar data points. One of the most popular approaches to this task is an algorithm known as k-means clustering \cite{jain2010data}. This algorithm was first proposed in 1967 by James MacQueen in his paper, \textit{Some Methods for Classification and Analysis of Multivariate Observations} \cite{macqueen1967some}. Formulated as a mixed-integer program (MIP), k-means clustering attempts to solve
+\begin{mini}
+	{\textbf{z}, \boldsymbol{\mu}}{\sum_{i=1}^C \sum_{j=1}^L z_{ij} \lVert \mathbf{v}_i - \boldsymbol{\mu}_j \rVert_2^2}
+	{\label{eq:minlp}}{}
+	\addConstraint{\sum_j z_{ij}}{= 1}{\quad \quad \forall i}
+	\addConstraint{\sum_i z_{ij}}{\geq 1}{\quad \quad \forall j}
+	\addConstraint{z_{ij}}{\in \{0, 1\}}{\quad \quad \forall i,j}
+\end{mini}
+However, (\ref{eq:minlp}) is a integer, non-convex opptimization problem -- traditionally a very difficult class of problems to solve to provable optimiality \cite{burer2012non}. Instead of solving (\ref{eq:minlp}), the k-means clustering finds a locally optimal partition of the data points in $\mathbf{X}$. The standard algorithm was proposed by Stuart Lloyd in his paper, \textit{Least Squares Quantization in PCM}, where he proposes k-means clustering which has an ``assignment'' and ``update'' step \cite{lloyd1982least}. In the assignment step, the algorithm places data points in certain clusters by computing
+\begin{equation}
+    \label{eq:assign_step}
+    S_i^t = \left \{ x_p : \lVert x_p - \mu_i^t \rVert_2^2 \leq \lVert x_p - \mu_j^t \rVert_2^2 \quad \forall j, 1 \leq j \leq k \right \}
+\end{equation}
+where $S_i^T$ and $\mu_i^t$ are the partition and centroid of the $i^{th}$ cluster at step $t$, respectively. In words what (\ref{eq:assign_step}) is saying is that we will move a data point, $x_p$ into the $i^{th}$ cluster if the distance from $x_p$ to $\mu_i^t$ is less than the distance of $x_p$ to the other cluster centroids. In the event where the distances between two centroids is the same, ties are broken arbitrarily. The second step of the k-means clustering algorithm is the update step where the centroids are given new values after various data points have been moved into different clusters. Mathematically this step corresponds to
+\begin{equation}
+    \label{eq:update_step}
+    \mu_i^{t+1} = \frac{1}{|S_i^t|} \sum_{x_j \in S_j^t} x_j.
+\end{equation}
+In short, (\ref{eq:update_step}) is stating that the centroid of cluster $i$ is the average of the data points that have been moved into the partition during the assignment step. The algorithm has converged if no points have changed assignment; otherwise, the algorithm goes back to the assignment step. This algorithm does not guarantee a globally optimal solution because it solves the optimization problem proposed in (\ref{eq:minlp}) in a greedy fashion, but it is very popular in practice due to its speed and simplicity \cite{hartigan1979algorithm} \cite{jain2010data}.
+
+Relating the k-means clustering algorithm to our problem, for our set-up we assume that we have both a data matrix, $\mathbf{X} \in \R^{n \times p}$ and labels $\mathbf{y} \in \{1, \ldots, C\}^n$; thus, this is by definition \textit{not} an unsupervised machine learning problem.
 
 \subsection{Mixed-Integer Programming Formulation}
 In this section, I will contextualize why we formulated the label hierarchy problem as a MIP, I will then describe the formulation, and then progressively provide linearization techniques to the formulation to demonstrate how we can make the problem scale. After reaching the final formulation, I will then describe how infer bounds on the big-$M$ component of the formulation and potentially provide a proof on how this bound is tighest possible bound without exploiting prior knowledge of the data. Finally, I will describe a LP relaxation technique we employ we use to help further scale the MIP.

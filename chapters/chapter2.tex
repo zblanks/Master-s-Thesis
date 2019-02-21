@@ -3,7 +3,7 @@
 \begin{document}
 \chapter{Background}
 
-In this chapter, we will provide a brief history on past approaches to solving the multi-class classification problem and also discuss modern techniques used specifically for image classification -- the primary area where we have applied our technique.
+In this chapter, we will cover the following areas: a brief history on how multi-class classification has been performed, recent approaches to the hierarchical classification problem, modern approaches to extracting useful features from images and text, and a brief overview of community detection algorithms on graphs. These areas highlight the major ideas that underpin the approaches developed in this thesis and provide context to the work that we have done.
 
 \section{Multi-Class Classification}
 When solving supervised classification tasks, the traditional assumption is that the labels, $\mathbf{y}$ in the data, $\mathcal{D} = \{(\mathbf{x}_i, y_i)\}_{i=1}^n$ are binary; that is, $y_i \in \{0, 1\}$ for $i = 1, 2, \ldots, n$. When this assumption is relaxed and $y_i \in \mathcal{L}$ where $\mathcal{L} = \{1, 2, \ldots, k\}$ for all samples, then we are dealing with a multi-class classification problem. To tackle this added complexity, past researchers have developed a number of competing approaches.
@@ -209,9 +209,45 @@ worked well when they set $\alpha = \frac{3}{4}$. To optimize over (\ref{eq:glov
 In our work, we utilize the GloVe vectors for two reasons: one, they are freely available on spaCy -- a NLP API available in the Python programming language -- and two, because a standard technique for document classification is to use word embeddings combined with a continuous bag of words (CBOW) model to represent documents and then feed that into a machine learning model to make predictions \cite{mikolov2013efficient}.
 
 \section{Community Detection}
-As we will present in Chapter 3, one of the hierarchy inference techniques we propose frames the question as a community detection problem. To provide mathematical context for our approach, we will introduce some key ideas from the community detection literature.
+One of the techniques which we propose for inferring the label groups of a data employs community detection on graphs. Therefore to provide context on the methods we will briefly discuss some of the key ideas behind the community detection algorithms we are using.
+
+To start, we need to provide some basic definitions of what \textit{is} a graph. Graphs (also referred to as networks) are defined by the tuple, $\mathcal{G} = (\mathcal{V}, \mathcal{E})$ where $\mathcal{V}$ is the set of vertices or nodes, and $\mathcal{E}$ is the set of edges or links. An edge connects nodes to one another. An example of a graph is displayed in Figure \ref{fig:simple_graph}.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=.7\linewidth]{images/simple_graph.pdf}
+    \caption[Example Graph]{This an example of a weighted, directed graph. The weights the edge, in this context, denote information flow between the vertices}
+    \label{fig:simple_graph}
+\end{figure}
+In Figure \ref{fig:simple_graph}, the vertices, $\mathcal{V} = \{1, \ldots, 10\}$, and one element from the edges set, $\mathcal{E}$ is $(1, 5)$ where the first index denotes the starting node and the second index indicates the terminating node. 
+
+Networks, can occur in a wide variety of contexts. For example, they have been employed on social network analysis \cite{wasserman1994social}, understanding pandemics \cite{gomez2017network}, and Google's algorithm, ``PageRank'' on their search engine \cite{page1999pagerank}. Additionally, a large number of networks display a community structure -- i.e., the vertices are organized into a group -- commonly referred to as ``communities'' or ``clusters.'' \cite{fortunato2016community}. For example, in Figure \ref{fig:simple_cd}, there are clearly three communities present in the network. One way to detect that these communities are present is through that fact that within the community there is large number of edges between the vertices, but outside of the community the number of connections is low. This idea is essential to a number of community detection algorithms and also underpins the approach that we use in our problem: modularity maximization.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=.7\linewidth]{images/comm_detection.pdf}
+    \caption[Simple Community Detection Example]{A simple example of a graph with three communities}
+    \label{fig:simple_cd}
+\end{figure}
 
 \subsection{Modularity Maximization}
-In this portion, I will introduce the modularity objective function in the context of community detection. I will also highlight the Louvain method for community detection -- the algorithm that we use for this approach. In particular I will discuss how it is a greedy algorithm, highlight it's two major iterative steps, and explain how it has been applied to a number of large-scale domains.
+One of the most popular ways to infer communities is network is find a partition which maximizes the ``modularity'' of a particular graph. This technique was first introduced by Gavin and Newman in their paper, \textit{Finding and evaluating community structure in networks} \cite{newman2004finding}, where they attempt to optimize the modularity function which is defined as
+\begin{equation}
+    Q = \frac{1}{2m} \sum_{i,j} \left(A_{ij} - \frac{k_i k_j}{2m} \right)\mathbbm{1}(c_i = c_j)
+\end{equation}
+where $k_i$ and $k_j$ are the sum of the weights attached to nodes $i$ and $j$, respectively, $2m$ is the sum of all of the edge weights in the graph, $A_{ij}$ is the value of the affinity matrix at entry $(i, j)$ -- this a conversion of the tuple $\mathcal{G} = (\mathcal{V}, \mathcal{E})$ into a matrix to make it easier to perform computations -- and $c_i$ and $c_j$ are the inferred communities for nodes $i$ and $j$. Intuitively, modularity attempts to measure the difference between the realized weight between nodes $i$ and $j$ and the probability that we would see a connection between $i$ and $j$ if the edges, and their corresponding weights, were distributed randomly.
+
+Community detection algorithms which maximize modularity do so with the objective of forming partitions of the network nodes. However, as the number vertices in a network increases, the corresponding number of partitions grows according the ``Bell numbers'' -- a series of numbers are attributed to a man named Eric Temple Bell. The exact value for a Bell number is defined typically through a recursion, but a bound was provided in 2010 by Berend and Tassa \cite{berend2010improved} where the number of partitions for $n$ vertices is bounded by
+\begin{equation}
+    B_n < \left(\frac{0.792n}{\ln(n + 1)} \right)^n.
+\end{equation}
+This is a value that grows extremely quickly, so finding the globally optimal partition of nodes, for most practical graphs is computationally intractable. Thus, a large research effort has been made proposing algorithms which locally maximize modularity. The algorithm that we will in this thesis is known as ``Louvain's method.''
+
+Louvain's method is a greedy, iterative optimization algorithm that finds locally optimal partitions of vertices by performing the following two steps
+\begin{enumerate}
+    \item For each node $i$, the change in modularity is calculated by moving $i$ into the community of each neighbor $j$ of $i$. Once this value is calculated for all communities of $i$, node $i$ is placed into the community with the greatest increase in modularity score. If no increases are possible then node $i$ stays in the current community. This process is repeated for all nodes until no modularity increase can be found.
+    \item In the second phase of the algorithm, it groups all of the nodes in the same community and builds a new network where nodes are the communities from the previous phase. Any links between nodes of the same community are now represented by self loops on the new community node and links from multiple nodes in the same community to a node in a different community are represented by weighted edges between communities. Once the new network is created, the second phase has ended and the first phase can be re-applied to the new network \cite{blondel2008fast}.
+\end{enumerate}
+The Louvian method has shown to scale to very large networks (118 million nodes, one billion edges) and produces superior modularity scores relative to other modularity maximizing benchmarks.
 
 \end{document}
