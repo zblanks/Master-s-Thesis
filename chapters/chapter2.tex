@@ -62,6 +62,7 @@ One of the first attempts proposals to solving the hierarchy inference (HI) prob
 
 The first one is what they call: ``K-means Based Division.'' To implement this algorithm, they represent each label in the data using a single point $\mathbf{v}_j$ where $\mathbf{v}_j$ equals
 \begin{equation}
+    \label{eq:kmeans_mean}
     \mathbf{v}_j = \frac{1}{m_j} \sum_{\mathbf{x}_i \in C_j} \mathbf{x}_i
 \end{equation}
 where $m_j$ is the number of samples in class $C_j$. Using $\mathbf{v}_j$, Vural and Dy then propose to solve the k-means clustering problem:

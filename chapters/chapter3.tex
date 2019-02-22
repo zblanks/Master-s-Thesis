@@ -28,10 +28,110 @@ where $S_i^T$ and $\mu_i^t$ are the partition and centroid of the $i^{th}$ clust
 \end{equation}
 In short, (\ref{eq:update_step}) is stating that the centroid of cluster $i$ is the average of the data points that have been moved into the partition during the assignment step. The algorithm has converged if no points have changed assignment; otherwise, the algorithm goes back to the assignment step. This algorithm does not guarantee a globally optimal solution because it solves the optimization problem proposed in (\ref{eq:minlp}) in a greedy fashion, but it is very popular in practice due to its speed and simplicity \cite{hartigan1979algorithm} \cite{jain2010data}.
 
-Relating the k-means clustering algorithm to our problem, for our set-up we assume that we have both a data matrix, $\mathbf{X} \in \R^{n \times p}$ and labels $\mathbf{y} \in \{1, \ldots, C\}^n$; thus, this is by definition \textit{not} an unsupervised machine learning problem.
+Relating the k-means clustering algorithm to our problem, for our set-up we assume that we have both a data matrix, $\mathbf{X} \in \R^{n \times p}$ and labels $\mathbf{y} \in \{1, \ldots, C\}^n$; thus, this is by definition \textit{not} an unsupervised machine learning problem. However, the goal is to group similar labels with one another by using $\mathbf{X}$ and $\mathbf{y}$. Thus this can indeed be viewed as an unsupervised problem. 
+
+Ultimately our goal is to infer some mapping matrix, $\mathbf{Z} \in \{0, 1\}^{C \times k}$ where $k$ is provided and which follows the constraints provided in (\ref{eq:minlp}). To this in a k-means clustering framework, we need to either have some way of back-tracking to the target from the clustering or we need to specifically encode a label as a single data point. 
+
+A first cut at this problem would be to perform k-means clustering on the data matrix, $\mathbf{X}$, and then for each of the labels, determine the most common cluster assignment and map that label to the particular grouping. This approach is simple and easy to implement, but it does not guarantee that it will generate a feasible solution. For example, suppose that the number of labels, $C = 3$, and the number of meta-classes, $k=2$. \textbf{Insert diagram displaying extreme case of this approach. This could be the circles dictating the three labels and show how this can yield an infeasible solution.}
+
+A better approach, and one that was first proposed by \cite{vural2004hierarchical}, is to represent each label using its mean sample -- like (\ref{eq:kmeans_mean}). Doing this for all labels, $j = 1, \ldots, C$, gives a matrix, $\mathbf{V} \in \R^{C \times p}$ where $\mathbf{v}_j$ represents the mean point for the $j^{th}$ label. Consequently performing k-means clustering on $\mathbf{V}$ will ensure that the resulting label map, $\mathbf{Z}$ is feasible. In this thesis we employ this k-means based approach as one of the techniques to infer a label hierarchy. This approach can summarized succinctly in two steps
+\begin{enumerate}
+    \item Build the $\mathbf{V}$ matrix by computing (\ref{eq:kmeans_mean}) for all labels, $j = 1, \ldots, C$
+    \item Perform k-means clustering on $\mathbf{V}$.
+\end{enumerate}
+
+The benefits of this approach is that it is simple and allows us to generate a large number of candidate label hierarchies quickly. A simple question might be though: how is what we are doing any different than what was proposed by Vural and Dy in \cite{vural2004hierarchical}? The primary way we distinguish ourselves from \cite{vural2004hierarchical} is that we do not force force $k=2$; instead we treat the number of meta-classes as a hyper-parameter to be inferred using cross-validation. The reason that \cite{vural2004hierarchical} set $k=2$ and then recursively built the HC is that the authors were attempting to generate a new binary classifier which can compute test predictions more quickly. This is not our goal. Instead, we are interested in developing a HC which provides superior performance relative to a flat classifier and the standard spectral-clustering based approach to hierarchical classification. Second, if we were to force $k=2$, this requires us to make $\left \lceil \log_2(C) \right \rceil$ correct classifications to get the true label. The more correct classifications that have to be made, the higher the probability that an error will occur and thus propagate down the HC (this is also referred to as the ``routing problem'' and will be discussed later in this chapter). 
 
 \subsection{Mixed-Integer Programming Formulation}
-In this section, I will contextualize why we formulated the label hierarchy problem as a MIP, I will then describe the formulation, and then progressively provide linearization techniques to the formulation to demonstrate how we can make the problem scale. After reaching the final formulation, I will then describe how infer bounds on the big-$M$ component of the formulation and potentially provide a proof on how this bound is tighest possible bound without exploiting prior knowledge of the data. Finally, I will describe a LP relaxation technique we employ we use to help further scale the MIP.
+One of the biggest weak points of the k-means clustering algorithm is that it can stuck in bad local optima \cite{hartigan1979algorithm}. Common techniques to avoid this issue are to provide better starting centroids (most commonly done through the ``k-means++ algorithm'' \cite{arthur2007k}) and to perform a large number of random restarts \cite{dick2014many}. However, an area that has shown great research potential in recent years has been framing existing machine learning problems and formulating them as MIPs.  For example, this has been done with the best subset selection for a linear regression \cite{bertsimas2016best}, robust classification \cite{bertsimas2018robust}, and other common algorithms in ML. The initial research results from this effort has shown that by framing existing ML heuristics as MIPs, it possible to see significant out-of-sample improvements. Using this as a starting point, we proposed to frame the k-means clustering problem, as stated in (\ref{eq:minlp}) as a MIP to see if this could yield outcomes.
+
+However, the objective function in (\ref{eq:minlp}) cannot be linearized since there is a quadratic term. Therefore instead of working with the $L_2$ norm, we proposed to solve
+\begin{mini!}
+	{\textbf{z}, \boldsymbol{\mu}}{\sum_{i=1}^C \sum_{j=1}^L z_{ij} \left(\sum_{k=1}^p |v_{ik} - \mu_{jk}|\right)}
+	{\label{eq:milp1}}{}
+	\addConstraint{\sum_j z_{ij}}{= 1}{\quad \quad \forall i}
+	\addConstraint{\sum_i z_{ij}}{\geq 1}{\quad \quad \forall j}
+	\addConstraint{z_{ij}}{\in \{0, 1\}}{\quad \quad \forall i,j}
+\end{mini!}
+By introducing an absolute value in the objective function of (\ref{eq:milp1}) it is now possible to linearize the formulation by converting the absolute value as well as the multiplication term in the objective.
+
+To start since (\ref{eq:milp1}) is a minimization problem, the absolute value component of the MIP can be reformulated to form a linear decision variable. Specifically definite the auxiliary variable $\tau_{ijk} = |v_{ik} - \mu_{jk}$. By definition of an absolute value, the following conditions must hold
+\begin{align}
+    v_{ik} - \mu_{jk} &\leq \tau_{ijk} \quad \quad \forall i, j, k \label{eq:abs1} \\
+    \mu_{jk} - v_{ik} &\leq \tau_{ijk} \quad \quad \forall i, j, k \label{eq:abs2}
+\end{align}
+Clearly the constraints (\ref{eq:abs1}) and (\ref{eq:abs2}) can be quite expensive given that we have three index sets to consider, but if the number of features $k$ is kept to small size, then the problem does not become unmanageable. Additionally, for notational simplicity, introduce the auxiliary variable $\gamma_{ij} = \sum_k \tau_{ijk}$. Combining these constraints and auxiliary variables we get the new formulation
+\begin{mini!}
+	{\textbf{z}, \boldsymbol{\mu}, \boldsymbol{\tau}, \boldsymbol{\gamma}}{\sum_{i, j} z_{ij} \gamma_{ij}}
+	{\label{eq:milp2}}{}
+	\addConstraint{\sum_j z_{ij}}{= 1}{\quad \quad \forall i}
+	\addConstraint{\sum_i z_{ij}}{\geq 1}{\quad \quad \forall j}
+	\addConstraint{v_{ik} - \mu_{jk}}{\leq \tau_{ijk}}{\quad \quad \forall i, j, k}
+	\addConstraint{\mu_{jk} - v_{ik}}{\leq \tau_{ijk}}{\quad \quad \forall i, j, k}
+	\addConstraint{\gamma_{ij}}{= \sum_k \tau_{ijk}}{\quad \quad \forall i, j}
+	\addConstraint{z_{ij}}{\in \{0, 1\}}{\quad \quad \forall i,j}
+\end{mini!}
+However, (\ref{eq:milp2}) is still not a mixed-integer linear program (MILP) because there is a non-linearity in the objective function: $z_{ij} \gamma_{ij}$. This can be linearized by observing the following fact: by definition
+\begin{equation*}
+    \gamma_{ij} = \sum_k \tau_{ijk} = \left(\sum_k |v_{ik} - \mu_{jk}|\right) \geq 0.
+\end{equation*}
+This implies that $\gamma_{ij}$ is lower-bounded by zero and has an upper bound $M$ (we will discuss how we systematically go about finding this upper-bound later in this section). Consequently, we introduce the new constraints and auxiliary decision variables
+\begin{align}
+    \delta_{ij} &\leq Mz_{ij} \quad \quad \forall i, j \\
+    \delta_{ij} &\leq \gamma_{ij} \quad \quad \forall i,j \\
+    \delta_{ij} &\geq \gamma_{ij} - M(1-z_{ij}) \quad \quad \forall i, j \\
+    \delta_{ij} &\geq 0 \quad \quad \forall i, j
+\end{align}
+Using these constraints we get the final, MILP formulation
+\begin{mini!}
+	{\textbf{z}, \boldsymbol{\mu}, \boldsymbol{\tau}, \boldsymbol{\gamma}, \boldsymbol{\delta}}{\sum_{i, j} \delta_{ij}}
+	{\label{eq:milp3}}{}
+	\addConstraint{\sum_j z_{ij}}{= 1}{\quad \quad \forall i}
+	\addConstraint{\sum_i z_{ij}}{\geq 1}{\quad \quad \forall j}
+	\addConstraint{v_{ik} - \mu_{jk}}{\leq \tau_{ijk}}{\quad \quad \forall i, j, k}
+	\addConstraint{\mu_{jk} - v_{ik}}{\leq \tau_{ijk}}{\quad \quad \forall i, j, k}
+	\addConstraint{\gamma_{ij}}{= \sum_k \tau_{ijk}}{\quad \quad \forall i, j}
+	\addConstraint{\delta_{ij}}{\leq M z_{ij} \label{eq:big_m1}}{\quad \quad \forall i, j}
+	\addConstraint{\delta_{ij}}{\leq \gamma_{ij}}{\quad \quad \forall i, j}
+	\addConstraint{\delta_{ij}}{\geq \gamma_{ij} - M(1-z_{ij}) \label{eq:big_m2}}{\quad \quad \forall i, j}
+	\addConstraint{\delta_{ij}}{\geq 0}{\quad \quad \forall i, j}
+	\addConstraint{z_{ij}}{\in \{0, 1\}}{\quad \quad \forall i,j}
+\end{mini!}
+The MILP formulated in (\ref{eq:milp3}) can be quite large, particularly because of the triple index constraint for $\tau_{ijk}$. However, given that $L \ll C$, as long as the dimensionality of the data does not grow too rapidly, (\ref{eq:milp3}) can be solved by employing a linear relaxation heuristic discussed later in this section. However, before introducing the solution heuristic we must first discuss how to systematically find values for the big-$M$. 
+
+\subsubsection{Big $M$ Procedure}
+We mentioned earlier that we can upper-bound the value for $\gamma_{ij}$ with some value $M$, and it is important from a computational perspective that we are able to find this value because we do not want to cut off solutions by having an $M$ that is too small, but we also do not want to expand the search space either. We will now discuss a procedure where we can systematically find a way to upper-bound the value of $\gamma_{ij}$ such that we know we are not eliminating any solutions while simultaneously having the tightest upper-bound possible.
+
+By definition $M$ corresponds to
+\begin{equation*}
+    M = \max \ \gamma_{ij} = \max \ \sum_k \tau_{ijk} = \max \ \left(\sum_k |v_{ik} - \mu_{jk}|\right).
+\end{equation*}
+Therefore finding $M$ corresponds to finding $\max \ \left(\sum_k |v_{ik} - \mu_{jk}|\right)$ for any $(i, j)$ combination. Formally, I claim:
+
+\begin{theorem}
+    It is sufficient to find the $\max \ \left(\sum_k |v_{ik} - \mu_{jk}|\right)$ when $j = 1$ because the value is the same for every $j \in \{1, \ldots, L\}$.
+\end{theorem}
+
+\begin{proof}
+    Suppose we have some vector $\mathbf{v}_i = (v_{i1}, v_{i2}, \ldots, v_{ip})^T$ and let $L$ be the number of meta-classes. Let $M_{ij}$ be the solution to the constrained optimization problem
+    \begin{maxi}
+    	{\boldsymbol{\mu}}{\sum_k |v_{ik} - \mu_{jk}|}
+    	{\label{eq:big_m}}{}
+    	\addConstraint{\mu_{jk}}{\geq L_k}{\quad \quad \forall k}
+    	\addConstraint{\mu_{jk}}{\leq U_k}{\quad \quad \forall k}
+    \end{maxi}
+    where $L_k$ and $U_k$ define the lower and upper bounds of the data which is inferred from $\mathbf{V}$. We know these constraints must exist because in the original problem of finding the centroids which \textit{minimize} the $L_1$ distance, clearly the algorithm would never select a point $\mu_{jk}$ which was greater than $U_k$ or smaller than $L_k$. This is true because the objective value of (\ref{eq:milp1}) could be reduced by simply moving $\mu_{jk} = L_k$ if it was beyond the lower bound or $\mu_{jk} = U_k$ if it was greater than the upper bound. 
+    
+    Using this fact, we see that the constraints in (\ref{eq:big_m}) hold regardless of the meta-class index. That is, for every $j \in \{1, \ldots, L\}$ $\boldsymbol{\mu}_j$ is subject to the same constraints. This implies that (\ref{eq:big_m}) is the same optimization problem regardless of the meta-class index which necessarily means that
+    \begin{equation*}
+        \boldsymbol{\mu}_1 = \boldsymbol{\mu}_2 = \cdots = \boldsymbol{\mu}_L.
+    \end{equation*}
+    Therefore since we defined $M_{ij}$ as the solution to (\ref{eq:big_m}) this means that
+    \begin{equation*}
+        M_{i1} = M_{i2} = \cdots = M_{iL}.
+    \end{equation*}
+    Thus we know that it is sufficient to solve the optimization problem for $j = 1$ because $M_{ij}$ is the same for all $j$.
+\end{proof}
 
 \subsection{Community Detection}
 In this section I will recast the hierarchy inference problem as a community detection problem on graphs. Moreover, I will introduce the similarity metrics we employ to calculate the similarity: RBF kernel, $L_2$ distance, Wasserstein distance, and $L_\infty$ distance. Finally I will provide how we are able to convert a distance metric (such as the $L_2$ distance) into a similarity metric so that it is usable within the context of community detection.
