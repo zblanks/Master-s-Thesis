@@ -102,6 +102,7 @@ Before explaining the intuition behind Algorithm \ref{alg:bengio_approach}, I fi
 \begin{enumerate}
     \item Form an affinity matrix, $\mathbf{A} \in R^{n \times n}$ by computing the radial basis function (RBF) kernel. The RBF kernel is defined as
     \begin{equation}
+        \label{eq:rbf-kernel}
         K(\mathbf{x}, \mathbf{y}) = \exp\left(-\frac{\lVert \mathbf{x} - \mathbf{y}\rVert_2^2}{2\sigma^2}\right)
     \end{equation}
     \item Compute the Laplacian, $\mathbf{L}$, by calculating $\mathbf{L} = \mathbf{D}^{-1/2}\mathbf{A}\mathbf{D}^{-1/2}$ where $\mathbf{D}$ is a diagonal matrix whose $(i, i)$-element is the sum of $\mathbf{A}$'s $i^{th}$ row
@@ -232,6 +233,7 @@ Networks, can occur in a wide variety of contexts. For example, they have been e
 \end{figure}
 
 \subsection{Modularity Maximization}
+\label{modularity-max}
 One of the most popular ways to infer communities is network is find a partition which maximizes the ``modularity'' of a particular graph. This technique was first introduced by Gavin and Newman in their paper, \textit{Finding and evaluating community structure in networks} \cite{newman2004finding}, where they attempt to optimize the modularity function which is defined as
 \begin{equation}
     Q = \frac{1}{2m} \sum_{i,j} \left(A_{ij} - \frac{k_i k_j}{2m} \right)\mathbbm{1}(c_i = c_j)
