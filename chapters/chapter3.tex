@@ -2,7 +2,16 @@
 
 \begin{document}
 \chapter{Methods}
-In this chapter, we will highlight the major methodological contributions that have been made in this thesis. The contributions fall into two major categories: how to infer label groups and how to train and make predictions from an HC. 
+Figure \ref{fig:hc-approach} pictorially summarizes how we propose to solve the hierarchical classification problem. It can be broken down into three major areas: transforming the data into a meaningful feature space, grouping the labels to form the label hierarchy, and using the label hierarchy to fit an HC.
+
+\begin{figure}
+    \centering
+    \includegraphics[width=.9\linewidth]{images/approach.pdf}
+    \caption[Hierarchical Classification Approach]{This summarizes the three steps that need to be taken to solve the hierarchical classification problem. Our work primarily focuses on the ``grouping'' and ``prediction'' stages, and we provide experimental context for the transformation components in Chapters 4 and 5.}
+    \label{fig:hc-approach}
+\end{figure}
+
+In this chapter, we will highlight the major methodological contributions that have been made in this thesis. The contributions fall into two major categories: how to infer label groups and how to train and make predictions from an HC. We will discuss how we transform the data in Chapters 4 and 5 because it can be dependent upon the data type and structure, and we do not make any contributions in this area. The methods we discuss in this chapter do however assume that the data provided, $\mathcal{D} = (\mathbf{X}, \mathbf{y})$ is a meaningful representation of the feature space.
 
 \section{Label Hierarchy Inference}
 In our research when working with HCs, we have focused on the case where the label hierarchy is unknown potentially because there are too many labels for this partition to be created by hand or asking an expert for a label grouping would yield conflicting answers. Consequently, to employ an HC, the label grouping must be inferred from the data. The standard way to do this, as mentioned in Chapter 2, is to first trained a FC and then use spectral clustering on a validation matrix to infer the label groups. This approach has the advantage of tying the label hierarchy to classifier performance -- ultimately the most important metric -- however, this formulation requires that we first train a flat classifier, which somewhat defeats the point of pursuing this hierarchical approach and second to perform spectral clustering the user must provide the number of meta-classes a-priori. We address the first primary problem with spectral clustering with our two methods by employing k-means clustering and a mixed-integer programming formulation, and we tackle both of the problems when we propose a community detection based approach.
@@ -292,20 +301,172 @@ An alternative approach to computing the pairwise similarity between all labels 
 
 Therefore, to employ the RBF kernel as the mechanism for representing the labels as an affinity matrix, $\mathbf{A}$, we simply first represent each target using the $\mathbf{V}$ matrix and then calculate the pairwise kernel for all $\binom{C}{2}$ targets. Because the value for the RBF kernel is defined between zero and one, this necessarily defines a similarity metric which can then be used by the Louvain method.
 
+\subsubsection{$L_2$ Similarity}
+In addition to the RBF kernel, another common metric denoting the similarity between two vectors is the $L_2$ distance. This value is defined as
+\begin{equation}
+    d_{ij} = \left(\sum_{k=1}^p (x_{ik} - x_{jk})^2 \right)^{\frac{1}{2}}
+\end{equation}
+where it is assumed that $\mathbf{x}_i$, $\mathbf{x}_j \in \mathbb{R}^p$. This distance is used in a variety of machine learning settings such as linear regression and k-means clustering, and is the most common way of measuring distance. However, the problem with immediately applying a distance metric to the community detection problem is that the Louvain method assumes that higher edge weights correspond to a stronger connection between the nodes. This is note true for the $L_2$ distance; a large values denotes a greater degree of dis-similarity between the vectors $\mathbf{x}_i$ and $\mathbf{x}_j$. Thus we have to convert the $L_2$ distance from a distance to a similarity metric.
+
+One way to accomplish this transformation is by computing
+\begin{equation}
+    \label{eq:dist-to-sim}
+    s_{ij} = \frac{1}{\exp(d_{ij})}
+\end{equation}
+where $d_{ij}$ is a generic distance measure between the vectors $\mathbf{x}_i$ and $\mathbf{x}_j$. This technique was proposed by \cite{haasdonk2004learning} and can be viewed as a generalized RBF kernel because it will transform any distance between into a similarity metric defined between zero and one. We will (\ref{eq:dist-to-sim}) for the remaining distance metrics as well.
+
+Again for computational purposes, we will compute the pairwise $L_2$ distance between all $\binom{C}{2}$ labels using the vectors in the matrix $\mathbf{V}$. Using set of $d_{ij}$ values for $(i,j)$ pairs, we will then convert them to similarity values using (\ref{eq:dist-to-sim}) and this can then be viewed as an affinity matrix upon which we can utilize community detection algorithms.
+
+\subsubsection{$L_\infty$ Distance}
+Another common distance measure that we will utilize to compute the similarity between labels is the $L_\infty$ norm. This norm is defined as
+\begin{equation}
+    d_{ij}^\infty = \underset{k \in \{1, \ldots, p\}}{\text{max}} \ |x_{ik} - x_{jk}|.
+\end{equation}
+The intuition behind employing this distance metric is that because the labels are quite similar to each other, we need to determine a way of maximally separating them. The $L_\infty$ norm finds the dimension between $\mathbf{x}_i$ and $\mathbf{x}_j$ in which they are farthest apart, and thus, even when labels on average appear to be close, the $L_\infty$ can detect locations in which they differ quite strongly. In principle this approach could help detect the more subtle differences between classes.
+
+To employ this distance metric, we will follow the same procedure for the $L_2$ norm.
+
+\subsubsection{Wasserstein Distance}
+For the final proposed similarity metric we turn to a more modern way of measuring distance. This distance is sometimes referred to as the ``Earth mover's distance'' (EMD) and it is called this because intuitively it can be viewed as the amount of ``dirt'' that would have to be moved to make a distribution $p$ look like another distribution $q$ \cite{rubner2000earth}. For the simplest case of the EMD -- which we work with for our problem -- it is defined as
+\begin{mini}
+	{\textbf{f}}{\sum_{i, j} f_{ij}}
+	{\label{eq:emd}}{}
+	\addConstraint{f_{ij}}{\geq 0}{ \quad \quad \forall i, j}
+	\addConstraint{\sum_{j} f_{ij}}{\leq w_{pi}}{\quad \quad \forall i}
+	\addConstraint{\sum_i f_{ij}}{\leq w_{qj}}{\quad \quad \forall j}
+	\addConstraint{\sum_{i,j} f_{ij}}{= \text{min} \left(\sum_i w_{pi}, \quad \sum_j w_{qj} \right)}{}
+\end{mini}
+where $w_{pi}$ and $w_{qj}$ is the ``weight'' of the $i$ instance in distribution $p$ and the $j$ element of distribution $q$. For our problem these are equal and normalized to unity. In this manner, (\ref{eq:emd}) is viewed as a ``transportation problem'' and solved using the network simplex algorithm \cite{gottschlich2014shortlist}. 
+
+The EMD, in addition to being a critical part of the field known as computational optimal transport \cite{peyre2019computational}, has been applied to number of areas in machine learning with great success -- especially in areas that are relevant for the task of determining similarity between objects. For example, \cite{kusner2015word} used it to compute the distance between documents and \cite{rubner2000earth} utilized the metric for image retrieval. 
+
+Thus for our experiments, as the similarity metric we compute the Wasserstein distance using SciPy's built-in implementation \cite{scipy}. SciPy is a package developed in the Python programming language that provides a large number of pre-designed algorithms used for scientific computations; in this case, the Wasserstein distance
+
+Having going through the four similarity metrics which we use for our experiments, we will now generalize this concept and explain how they can help attain the goal of inferring label groups using community detection algorithms.
+
+\subsubsection{Inferring Communities}
+To infer the meta-classes in the data, we assume that we have the label matrix, $\mathbf{V}$ which can then be transformed into an affinity matrix, $\mathbf{A}$ where the edge weights denote the degree of similarity between labels $i$ and $j$. A higher value on this edge weights corresponds to a greater similarity between the labels, and thus we are able to utilize the Louvain method, or more generally a modularity maximizing algorithm, because these approaches assume that a larger score indicates a stronger connection between the nodes in the graph. However, the modularity function detailed in (\ref{eq:modularity}) implicitly assumes that the graph is undirected. For the affinity matrix, $\mathbf{A}$ this assumption holds true for almost cases: the similarity between label $(i, j)$ is the same as $(j, i)$. Nevertheless, when computing the similarity between all $\binom{C}{2}$ labels, the algorithm also computes the similarity between labels $i$ and $i$. This value will always be one if the metric is valid because the vector $\mathbf{x}_i$ should be perfectly similar to the same vector, $\mathbf{x}_i$. While this is valid it does incidentally introduce a directed edge into the graph because there are now self-arcs for all nodes. To correct this problem, we can simply set the $\text{diag}(\mathbf{A}) = 0$ and the affinity matrix will now be an undirected graph.
+
+Finally, having a valid, undirected affinity matrix, $\mathbf{A}$, the Louvain method can be utilized to infer the communities. The advantage of this approach is that the algorithm automatically infers the appropriate number of meta-classes -- thereby eliminating the need to specify it beforehand as we need with the k-means and MIP-based approaches. However, as we will show in Chapter 4, the similarity metric which is employed can affect the resulting of the hierarchical classifier. Therefore, the choice of similarity metric must be viewed as a new hyper-parameter which must be inferred in cross-validation. The advantage of this hyper-parameter versus selecting the number label groups, $L$, is the hyper-parameter space is significantly smaller than the previous two methods. This makes it easier to train and validate a hierarchical model fit in this fashion. Algorithm ... summarizes the community detection approach succinctly.
+
+\begin{algorithm}
+    \caption{Community Detection Hierarchy Inference}
+    \label{alg:comm-detect}
+    \begin{algorithmic}[1]
+        \Procedure{Detect Communities}{$\mathbf{V}$, metric}
+            \If{metric is RBF}
+                \State $\mathbf{A} \gets $ output of (\ref{eq:rbf-kernel}) for all $\binom{C}{2}$ labels in $\mathbf{V}$
+            \Else{}
+                \State $\mathbf{A} \gets$ output from appropriate distance metric for all $\binom{C}{2}$ labels in $\mathbf{V}$
+                \State $\mathbf{A} \gets$ conversion using (\ref{eq:dist-to-sim})
+            \EndIf
+            \State $\text{diag}(\mathbf{A}) = 0$ \Comment{Makes the graph undirected}
+            \State $\mathbf{Z}^* \gets$ Louvain method solution to (\ref{eq:modularity}) using $\mathbf{A}$
+            \State \textbf{return} $\mathbf{Z}^*$
+        \EndProcedure
+    \end{algorithmic}
+\end{algorithm}
+
 \subsection{Spectral Clustering Generalization}
-In this final portion of the hierarchy inference, I will show how we can generalize the spectral clustering framework proposed by Bengio in \cite{bengio2010label} by using a HC as the warm-start.
+For this final section, we will not be introducing a new approach to the label hierarchy inference problem but rather a generalization of an existing method. In the hierarchical framework proposed by Bengio et. al. in \cite{bengio2010label}, the authors utilizes Algorithm \ref{alg:bengio_approach} to infer the label groups and fit the HC. For the label grouping they utilize spectral clustering and then use the resulting partition as their meta-classes. The advantage of this approach, as mentioned in Chapter 2, is that it ties the inferred label groups to classification error -- which is ultimately what we want to minimize. However, to employ this technique, the authors have to have some classifier to generate the validation predictions. The simplest one and the technique that is used numerous places like \cite{bengio2010label}, \cite{yan2015hd}, and \cite{wang2018learning}, is to use the standard flat classifier to generate the predictions. Nevertheless, the major problem with employing this technique is that if the original classifier is trained poorly, then the resulting label groups will not be meaningful because they are directly tied what the estimator did and did not mis-classify. 
+
+Alternatively, what if we did not have to use a flat classifier as the input to the spectral clustering based approach? What if we could use a hierarchical approach as a ``warm start'' for this method and ideally give it better label groups which it could infer? This is the final technique that we propose with respect to label hierarchy inference. This procedure has two steps:
+\begin{enumerate}
+    \item Fit an HC in the manner which will be described in Section \ref{hc-training} using any of the label grouping methods which do not require a classifier to get the partition (e.g., the k-means based approach)
+    \item Implement Algorithm \ref{alg:bengio_approach} where we use the classifier trained in step one to generate the predictions.
+\end{enumerate}
+
+The advantage of this approach is that is leverages the strengths of the previously defined label grouping methods while still ultimately connecting the final classifier to classification performance -- the metric in which we are most interested. 
 
 \section{HC Training}
-In this component of the methods section, I will describe the techniques we use to train a HC, assuming that the label hierarchy has already been inferred.
+\label{hc-training}
+For the second major part of training an HC, we will now discuss the ``Prediction'' component of the process as depicted in Figure \ref{fig:hc-approach}. Specifically we will cover how we fit the estimators in the HC, how we provide different features at each level of the HC, and how the final predictions are generated.
 
-\subsection{Node-Level Features}
-In this subsection, I will describe how we provide relevant features for each node in the HC. In particular we will describe how we used linear discriminant analysis (LDA) to provide relevant, supervised features to the node.
+\subsection{Fitting the Classifiers}
+In Figure \ref{fig:example-hc} we provide an example of an HC with three labels and a pre-determined partition of the classes
+
+\begin{figure}
+    \centering
+    \includegraphics[width=\linewidth]{images/example-hc.pdf}
+    \caption[Example Hierarchical Classifier]{This depicts an HC with three labels where the meta-classes have already been inferred and now the model has to be fit to the data appropriate for the given parent node.}
+    \label{fig:example-hc}
+\end{figure}
+
+In Figure \ref{fig:example-hc}, there are two parent nodes in the graph: the root node denoted with an ``R'' and the node which depicts the meta-class containing the car dealership and shopping mall labels. The simplest way to train an HC, and technique which is proposed in \cite{yan2015hd}, \cite{bengio2010label}, and \cite{aly2005survey}, and a variety of other authors who have utilized HCs in their research is to train each classifier in the tree individually. What this means for the example HC shown in Figure \ref{fig:example-hc} is that there are two classifiers which need to be fit to data: $f_1$ and $f_2$. In Figure \ref{fig:hc-w-classifiers} we have circled the nodes which are contained in each of these classifiers
+
+\begin{figure}
+    \centering
+    \begin{subfigure}{.49\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{images/ex-hc1.pdf}
+        \caption{$f_1$ HC Estimator}
+    \end{subfigure}
+    \begin{subfigure}{.49\linewidth}
+        \centering
+        \includegraphics[width=\linewidth]{images/ex-hc2.pdf}
+        \caption{$f_2$ HC Estimator}
+    \end{subfigure}
+    \caption[Example Hierarchical Classifier with Estimator Delineation]{This depicts the two classifiers which comprise this particular HC. The classifier $f_1$ distinguishes the two meta-classes and the estimator $f_2$ separate the elements the car dealership and shopping mall label grouping.}
+    \label{fig:hc-w-classifiers}
+\end{figure}
+
+In general, for any HC, algorithm will fit a classifier which corresponds to the labels belonging to the parent node in the graph. Thus $f_1$ in Figure \ref{fig:hc-w-classifiers} denotes that the estimator will predict whether the sample contains a golf course or is an element in the meta-class, and $f_2$ will predict to which label the sample belongs in the car dealership, shopping mall label group. The classifiers $f_1$ and $f_2$ can be trained separately because they do not share memory; $f_1$ gets the data $\mathcal{D}^1 = (\mathbf{X}, \mathbf{y}^R)$ where $\mathbf{y}^R$ denotes a target vector which has been re-mapped to the meta-class labels. For example, if car dealership was represented by label zero, shopping mall by one, and golf course as two, and $\mathbf{y} = (0, 1, 2)$ then $\mathbf{y}^R = (0, 0, 1)$. Similarly, the second classifier, $f_2$ gets the training data $\mathcal{D}^2 = (\mathbf{X}^{\mathcal{M}_1}, \mathbf{y}^{\mathcal{M}_1}$ where $\mathcal{M}_1$ denotes the first inferred meta-class in the data and thus the data matrix and target vector is solely comprised of elements, in the case of Figure \ref{fig:example-hc} belonging to the car dealership and shopping mall labels. Clearly, $f_1$ and $f_2$ do no share any data and thus it is legitimate to train them separately. Moreover, by this construction, this also allows us to train $f_1$ and $f_2$ in parallel because this is what as known as an ``embarrassingly parallel'' problem or one which the tasks (i.e., training $f_1$ and $f_2$) can be easily separated \cite{herlihy2012art}.
+
+\subsection{Unique Features}
+In addition to training $f_1$ and $f_2$ separately, an observation one can make between $f_1$ and $f_2$ is that the things which separate a golf course from the other two labels are not the same ones which distinguish the shopping mall from the car dealership. To make the first classification with $f_1$, one simple feature (although we do not use this, we use features inferred from CNNs, this is done purely for explanatory purposes) might be whether a large portion of the picture is green. If it is, then the sample is likely a golf course, but if it not it probably falls into the other meta-class. For $f_2$, however, the distinction between the labels is more subtle. Typically shopping malls are larger and may have fewer things trying to grab the attention of the customer (car dealerships can sometimes have ``wacky waving inflatable arm flailing tube men'' \cite{wacky_wavy} and other things to capture a customer's attention). A reasonable inference though from these observations is that $f_1$ and $f_2$ should be given different features since what might be informative for $f_1$ may not be for $f_2$ (e.g., whether there is green in a picture). 
+
+This idea has recently been recognized in the HC literature primarily when authors utilized CNNs for their HCs \cite{yan2015hd} \cite{wang2018learning}. Convolutional networks are implemented because as discussed in Chapter 2, their algorithm implicitly infers new features and thus if $f_1$ and $f_2$ were both CNNs, there is a high chance that the models would develop different filters for their respective task. However, there are situations when employing a CNN is an inappropriate model for the data or is too computationally expensive, but we still want to be able to use this hierarchical framework. 
+
+Thus, in our research we propose to use methods which can infer features relevant for the given classifier that can be applied for any model -- not just CNNs. To meet this condition, an algorithm must be able to meet the following conditions:
+\begin{enumerate}
+    \item Be computationally tractable
+    \item Infer features which utilize the labels
+\end{enumerate}
+The more important of these two requirements is the second one -- that the features which are inferred for the given classifier utilize the labels. This point is brought up because there are a number of dimensionality reduction algorithms which we will infer new features for a given classifier. For example, principal component analysis (PCA) would generate new features from $\mathbf{X}$ and will typically do so in a computationally tractable manner. Nevertheless, the algorithm does not employ any information about the labels, $\mathbf{y}$, and so they are not an appropriate feature generation technique \cite{jolliffe2011principal}.
+
+The algorithm which we utilize in our experiments is linear discriminant analysis (LDA). At a high level the objective of multi-class LDA is to find a projection matrix, $\mathbf{W} \in \mathbb{R}^{p \times d}$, which transforms the data from $p$-dimensional space to $d$-dimensional space where $d \leq (C-1)$. This implicitly assumes that $p > d$. Formally, the algorithm tries to find projection which maximizes the ratio of total between-class spread over total within-class spread. The intuition behind this approach is that a good projection should have a large separation between the class labels (between-class spread) and a compact representation of the label itself (within-class spread). Within-class is defined as
+\begin{equation}
+    \mathbf{S}_j = \sum_{\mathbf{x}_i \in \mathcal{C}_j} (\mathbf{x}_i - \boldsymbol{\mu}_j)(\mathbf{x}_i - \boldsymbol{\mu}_j)^T
+\end{equation}
+where $\boldsymbol{\mu}_j = \frac{1}{N_j} \sum_{\mathbf{x}_i \in \mathcal{C}_j} \mathbf{x}_i$. Between class spread is defined as
+\begin{equation}
+    \mathbf{S}_B = \sum_{j=1}^C N_j (\boldsymbol{\mu}_j - \boldsymbol{\mu})(\boldsymbol{\mu}_j - \boldsymbol{\mu})^T
+\end{equation}
+where $\boldsymbol{\mu} = \frac{1}{N} \sum_i \mathbf{x}_i$. Using those matrices, the projected within and between-class spread is defined as
+\begin{equation}
+    \mathbf{S}_B^\prime = \mathbf{W}^T \mathbf{S}_B \mathbf{W}
+\end{equation}
+and
+\begin{equation}
+    \mathbf{S}_W^\prime = \mathbf{W}^T \mathbf{S}_W \mathbf{W}
+\end{equation}
+where $\mathbf{S}_W = \sum_j \mathbf{S}_j.$ The solution to the LDA problem is thus
+\begin{equation}
+    \label{eq:lda}
+    \mathbf{W}^* = \argmax \quad \frac{\left| \mathbf{S}_B^\prime \right|}{\left| \mathbf{S}_W^\prime \right|}.
+\end{equation}
+Problem (\ref{eq:lda}) is solved as generalized eigenvector problem \cite{mika1999fisher}.
+
+Returning to the two criteria we proposed, we stated that any algorithm which generates new features for a particular node must be computationally tractable and must use the labels to help infer new features. An open-source implementation of this algorithm in Scikit-learn uses singular value decomposition to solve (\ref{eq:lda}) which has a number of fast algorithms such as \cite{halko2011finding}. Moreover, since the means of each class, $\boldsymbol{\mu}_j$ are used to compute the within-class spread, the labels are also utilized to infer the new features.
+
+One reasonable critique of this approach is that LDA forces us to find a linear representation of the data which may not be appropriate. This is fair, but the reason we selected LDA is because it is freely available on open-source software and existing non-linear versions of the algorithm have difficulty scaling to larger problems (one of our data sets has $200,000$ samples) and more importantly there was not an existing code that could be easily integrated \cite{park2005nonlinear}. However, in general, as long as the feature extraction meets the two criteria that were listed previously, it is a valid approach.
 
 \subsection{Routing Problem}
-Finally, I will describe how we compute posterior probabilities in a more robust way to avoid the ``routing problem'' that is traditionally seen with HCs. In particular, I will describe how using the LOTP allows us to compute better posterior probabilities versus simply using the arg-max prediction at a particular level. 
+Thus far we have described how we train a hierarchical classifier and how we can boost its performance by giving features relevant to the specific classifier. The last component of utilizing an HC for a classification problem is to generate test sample predictions using the model. 
+
+Suppose that we had some test sample $\mathbf{x}^T$ and we wanted to determine the most likely label to which $\mathbf{x}^T$ belongs in the HC depicted in Figure \ref{fig:example-hc}. The simplest way of approach this problem is to start at the root of the tree generate predictions for each level and select the label which gives the highest posterior probability. For this specific case, suppose the posterior probability generated from $f_1$ is the vector $\hat{\mathbf{y}} = (0.51, 0.49)$. Using the previously mentioned strategy our algorithm would then proceed to make a prediction using $f_2$. Since this is the terminating node in the tree, the label with the largest posterior probability would be the final prediction made by the model for sample $\mathbf{x}^T$. But what if the prediction the model made at the root was wrong? Because the golf course had a lower probability, the algorithm eliminated it as a possibility. However, if the true label was actually the golf course, by removing it as possibility by using the schema of always going down the tree in the direction of the largest posterior probability, it is possible that the true sample could be lost because the algorithm has disregarded it as a possibility. This is known as the ``routing problem'' because if the algorithm chooses the wrong ``route'' in the HC graph, then using the policy of always selecting the largest value can lead to situations where the true label is lost. This problem is particularly pernicious when posterior predictions yield similar values like demonstrated in the example above.
+
+Most of the time when using HCs, this problem is simply accepted as an implicit downside of the algorithm. Specifically HCs were originally developed to decrease test time performance such as with \cite{vural2004hierarchical} and \cite{bengio2010label}; an alternative approach in which one gets posterior predictions from all of the labels was out of the question because that would defeat their entire purpose of designing the algorithm.
+
+However, our goal by utilizing an HC is \textit{not} to decrease the time to make test set predictions, but rather to perform better in situations when there are similar labels. Thus one way to get around this issue is to ignore it all together. Specifically, instead of just going with the highest posterior probability, why not get the posterior predictions from every classifier in the Hc and then combine them using the law of total probability (LOTP). The HCs we propose in our research all have two layers, thus the algorithm calculates:
+\begin{equation}
+    \label{eq:routing}
+    \P\left(y_i = j \mid \mathbf{x}_i \right) = \sum_{l=1}^L \P\left(y_i \in \mathbf{Z}_l \mid \mathbf{x}_i\right) \P\left(y_i = j \mid \mathbf{x}_i, y_i \in \mathbf{Z}_l\right) \quad \forall j
+\end{equation}
+and then the highest value of $P(y_i = j | \mathbf{x}_i)$ is selected as the final test sample prediction. The advantage of using (\ref{eq:routing}) over the standard arg-max approach is that the algorithm will never eliminate a label as a possibility and thus we have effectively skirted the ``routing problem.''
 
 \section{Node Level Metrics}
-For this section, I will introduce the metrics that we employ throughout our experiments to evaluate the performance of our classifiers. In particular I will first introduce the leaf-level metrics because they are easiest to understand. Afterwards, I will highlight how we developed the node-level metrics.
+Finally, in addition to inferring reasonable meta-classes and training the HC, we need a way to evaluate how the classifier did both at the leaf level of making fine-grained predictions and at higher levels of whether it can distinguish meta-classes from one another. In this section we will introduce the leaf and node-level metrics which are utilized extensively to evaluate the HC algorithm in Chapters 4 and 5. 
 
 \subsection{Leaf-Level Metrics}
 In this section, I will briefly introduce ``Leaf Top 1'' and ``Leaf Top 3.'' These are simple metrics which are commonly employed with other classifiers, so I don't expect that this will be a long discussion.

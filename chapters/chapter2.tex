@@ -236,6 +236,7 @@ Networks, can occur in a wide variety of contexts. For example, they have been e
 \label{modularity-max}
 One of the most popular ways to infer communities is network is find a partition which maximizes the ``modularity'' of a particular graph. This technique was first introduced by Gavin and Newman in their paper, \textit{Finding and evaluating community structure in networks} \cite{newman2004finding}, where they attempt to optimize the modularity function which is defined as
 \begin{equation}
+    \label{eq:modularity}
     Q = \frac{1}{2m} \sum_{i,j} \left(A_{ij} - \frac{k_i k_j}{2m} \right)\mathbbm{1}(c_i = c_j)
 \end{equation}
 where $k_i$ and $k_j$ are the sum of the weights attached to nodes $i$ and $j$, respectively, $2m$ is the sum of all of the edge weights in the graph, $A_{ij}$ is the value of the affinity matrix at entry $(i, j)$ -- this a conversion of the tuple $\mathcal{G} = (\mathcal{V}, \mathcal{E})$ into a matrix to make it easier to perform computations -- and $c_i$ and $c_j$ are the inferred communities for nodes $i$ and $j$. Intuitively, modularity attempts to measure the difference between the realized weight between nodes $i$ and $j$ and the probability that we would see a connection between $i$ and $j$ if the edges, and their corresponding weights, were distributed randomly.
