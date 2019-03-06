@@ -452,6 +452,7 @@ Returning to the two criteria we proposed, we stated that any algorithm which ge
 One reasonable critique of this approach is that LDA forces us to find a linear representation of the data which may not be appropriate. This is fair, but the reason we selected LDA is because it is freely available on open-source software and existing non-linear versions of the algorithm have difficulty scaling to larger problems (one of our data sets has $200,000$ samples) and more importantly there was not an existing code that could be easily integrated \cite{park2005nonlinear}. However, in general, as long as the feature extraction meets the two criteria that were listed previously, it is a valid approach.
 
 \subsection{Routing Problem}
+\label{routing-problem}
 Thus far we have described how we train a hierarchical classifier and how we can boost its performance by giving features relevant to the specific classifier. The last component of utilizing an HC for a classification problem is to generate test sample predictions using the model. 
 
 Suppose that we had some test sample $\mathbf{x}^T$ and we wanted to determine the most likely label to which $\mathbf{x}^T$ belongs in the HC depicted in Figure \ref{fig:example-hc}. The simplest way of approach this problem is to start at the root of the tree generate predictions for each level and select the label which gives the highest posterior probability. For this specific case, suppose the posterior probability generated from $f_1$ is the vector $\hat{\mathbf{y}} = (0.51, 0.49)$. Using the previously mentioned strategy our algorithm would then proceed to make a prediction using $f_2$. Since this is the terminating node in the tree, the label with the largest posterior probability would be the final prediction made by the model for sample $\mathbf{x}^T$. But what if the prediction the model made at the root was wrong? Because the golf course had a lower probability, the algorithm eliminated it as a possibility. However, if the true label was actually the golf course, by removing it as possibility by using the schema of always going down the tree in the direction of the largest posterior probability, it is possible that the true sample could be lost because the algorithm has disregarded it as a possibility. This is known as the ``routing problem'' because if the algorithm chooses the wrong ``route'' in the HC graph, then using the policy of always selecting the largest value can lead to situations where the true label is lost. This problem is particularly pernicious when posterior predictions yield similar values like demonstrated in the example above.
@@ -465,13 +466,62 @@ However, our goal by utilizing an HC is \textit{not} to decrease the time to mak
 \end{equation}
 and then the highest value of $P(y_i = j | \mathbf{x}_i)$ is selected as the final test sample prediction. The advantage of using (\ref{eq:routing}) over the standard arg-max approach is that the algorithm will never eliminate a label as a possibility and thus we have effectively skirted the ``routing problem.''
 
-\section{Node Level Metrics}
+\section{Evaluation Metrics}
 Finally, in addition to inferring reasonable meta-classes and training the HC, we need a way to evaluate how the classifier did both at the leaf level of making fine-grained predictions and at higher levels of whether it can distinguish meta-classes from one another. In this section we will introduce the leaf and node-level metrics which are utilized extensively to evaluate the HC algorithm in Chapters 4 and 5. 
 
 \subsection{Leaf-Level Metrics}
-In this section, I will briefly introduce ``Leaf Top 1'' and ``Leaf Top 3.'' These are simple metrics which are commonly employed with other classifiers, so I don't expect that this will be a long discussion.
+One of the most common ways of evaluating a classifier is to determine its classification accuracy. The HC, as mentioned in Section \ref{routing-problem} will generate a posterior distribution: $p(y | \mathbf{x}_i)$. The way the algorithm then makes the final classification is by selecting the class with the largest probability value -- this is denoted by the variable, $\hat{y}_i$. To determine if this prediction was correct, the algorithm checks if $\hat{y}_i$ equals the true label, $y_i$. Thus classification accuracy -- or what we will be referring as ``Leaf Top 1'' in Chapters 4 and 5 is defined as
+\begin{equation}
+    \text{LT}_1 = \frac{\sum_{i=1}^n \mathbbm{1}(y_i = \hat{y}_i)}{n}.
+\end{equation}
+We call the standard classification accuracy ``Leaf Top 1'' because it corresponds to the top prediction made at the leaf level of the HC tree. Similarly a generalization of $\text{LT}_1$ is ``Leaf Top $k$.'' For this schema, we get the labels that correspond to the top $k$ posterior values from $p(y | \mathbf{x}_i)$ and check if the true label, $y_i$ is an element of this set. We denote the set of the top $k$ largest values of $p(y | \mathbf{x})$ as 
+\begin{equation*}
+    T_k = \underset{p^\prime \subset p, \ |p| = k}{\argmax} \quad \sum_{j=1}^C p(y = j | \mathbf{x}).
+\end{equation*}
+Using this set, ``Leaf Top $k$'' is then defined as
+\begin{equation}
+    \text{LT}_k = \frac{\sum_i \mathbbm{1}(y_i \in T_k)}{n}.
+\end{equation}
+In our experiments we typically use Leaf Top 3, but this of course can be adjusted to scale to the label size in the data.
 
 \subsection{Node-Level Metrics}
-In this part of the methods section, I will introduce the node-level metrics that we created to help us compare HCs. In particular, I will discuss some of the challenges of comparing HCs and how we used the Monte Carlo based technique to attempt to skirt this issue. 
+Another set of metrics that an analyst might be interested in is the performance of the HC at the node level (i.e., how well does the HC do distinguishing the meta-classes it has inferred). One of the benchmarks we employ is what we refer to as a ``flat classifier'' or the standard classifier which predicts all the labels at once. This metric cannot be applied to it because the notion of meta-classes does not make sense for that estimator. Thus, this metric -- which we will refer to as ``Node Top 1'' -- is defined only for HCs. 
+
+However, the primary difficulty of developing this metric is that when comparing two hierarchical classification methods (e.g., the k-means and community detection based approach) it is not guaranteed that these estimators have the same number of classes. For example, suppose that the k-means approach found that ten meta-classes was best and the community detection algorithms inferred five. If we then used the standard classification approach of seeing if the predicted label from the given HC matched the true label re-mapped to the corresponding label groups, we would not be getting an apples-to-apples comparison between the estimators. Since the community detection approach has half the number of meta-classes as the k-means approach in this instance, we would expect that this algorithm would do better because prior probability of getting it correct is higher. 
+
+Recognizing this fact, one might then attempt to normalize by the number of meta-classes the HC inferred. For example, a computation one would perform to see how the k-means approach did normalized by the ten meta-classes would be
+\begin{equation}
+    \label{eq:naive-nt1}
+    \frac{\sum_i \mathbbm{1}(\hat{y}_i^R = y_i^R)}{10}.
+\end{equation}
+The issue this technique is that it implicitly assumes that the labels are uniformly distributed between the meta-classes. This is not necessarily true and in extreme cases can give overestimates the HC's performance. For example, suppose that the HC determine that $L=2$ and one meta-class had $999$ labels and the contained one. Assuming that the distribution of samples belonging to each label was approximately similar for this scenario, we would expect that this classifier at the node level would get this correct in almost all situations. However, if we then employed (\ref{eq:naive-nt1}) to determine the performance of the HC, the resulting value would be too optimistic because there is not a uniform probability of getting it correct at the node level, the correct normalization value would be $\frac{999}{1000}$. In this scenario, using this normalization scheme we would in effect be asking the question: how much better is the true classifier relative to a random classifier. Mathematically this would correspond to the question:
+\begin{equation*}
+    \frac{\text{Accuracy of True Classifier}}{\text{Accuracy of Random Classifier}}.
+\end{equation*}
+Given the limitation mentioned earlier regarding different numbers of meta-classes between HCs, this is the simplest way we could determine to make an apples-to-apples comparison between HCs.
+
+However, in the scenario described in the previous paragraph, to get to the normalization of $\frac{999}{1000}$ -- the accuracy we would expect from a random classifier -- we had to make the critical assumption that the distribution of samples in the labels was uniform. This is almost never the case, and if this assumption did not hold for the data, then the normalization factor would not be valid. Thus we need a way to calculate the expected accuracy of a random classifier which does make any parametric assumptions on the data. To do this we will employ Monte Carlo permutation strategy.
+
+In non-parametric statistics, permutation tests are one of the most common ways to perform statistical tests using the null hypothesis that the treatment has no effect \cite{good2013permutation}. However the strict form of the permutation test assumes that every element of the permutation space it utilized for the sampling distribution. Even for the smaller data sets, which contain approximately $10,000$ samples, it is computationally intractable to generate $10,000!$ permutations of the target vector, $\mathbf{y}$. When facing this problem, one technique is to utilized Monte Carlo sampling. That is, instead of utilizing the entire permutation space, generate a large number of permutations and then use these values to approximate the permutation sampling distribution.  This is how we will compute the expected accuracy of a random classifier. Namely, we will permute the true label vector a large number of time, compute how accurate the true predictions are under this permutation, and then calculate the mean value of the permutation sampling distribution. Using this strategy we can compute the expected performance of a random classifier without making any assumptions on the distribution of labels or samples within those classes. Once we have computed this value, we can then calculate the ratio of how the true HC predictions do relative to a random classifier. This process is formally described in Algorithm \ref{alg:nt1-monte-carlo}.
+
+\begin{algorithm}
+    \caption{Monte Carlo Permutation HC Comparison}
+    \label{alg:nt1-monte-carlo}
+    \begin{algorithmic}[1]
+        \Procedure{Compare HC}{$\hat{\mathbf{y}}^R$, $\mathbf{y}^R$, $k$}
+            \State $T_A \gets \frac{1}{n} \sum_{i=1}^n \left(\hat{y}_i^R = y_i^R \right)$
+            \State $\mathbf{r} \gets (0, \ldots, 0)$ \Comment{Instantiate a vector to hold permutation results}
+            \For{$j \in \{1, \ldots, k \}$}
+                \State $\mathbf{y}^{R, P} \gets $ Permute $\mathbf{y}^R$
+                \State $\mathbf{r}[j] \gets \frac{1}{n} \sum_{i=1}^n \mathbbm{1}\left(\hat{y}_i^R = y_i^{R,P}\right)$
+            \EndFor
+            \State $\bar{R}_A \gets \frac{1}{k} \sum_{j=1}^k \mathbf{r}[j]$
+            \State \textbf{return} $\frac{T_A}{\bar{R}_A}$
+        \EndProcedure
+    \end{algorithmic}
+\end{algorithm}
+
+\section{Summary}
+In this chapter we described the major methodological contributions that we have made in the area of hierarchical classification. In particular we covered the new label grouping methods we have developed, as well as the techniques which we will employ to train and generate predictions from the HC. Finally we discussed how we will evaluate the resulting HC at both the standard leaf level as well as how to compare different HC estimators.
 
 \end{document}
